@@ -14,20 +14,21 @@ def check_character():
         return jsonify({"error": "Please provide both server and character_name in the request body"}), 400
 
     url = f'https://www.tibia.com/community/?subtopic=worlds&world={server}'
-    response = requests.get(url)
-    
-    if response.status_code != 200:
-        return jsonify({"error": "Failed to retrieve data from Tibia website"}), 500
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from Tibia website: {e}")
+        return jsonify({"error": f"Failed to retrieve data from Tibia website: {e}"}), 500
     
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    # Encontrar a seção que contém a lista de personagens online
     online_section = soup.find_all('tr', {'class': ['Odd', 'Even']})
     
     if not online_section:
+        print("Failed to find the online characters section")
         return jsonify({"error": "Failed to find the online characters section"}), 500
     
-    # Percorrer as linhas da tabela para verificar os personagens
     character_found = False
     for row in online_section:
         cols = row.find_all('td')
@@ -48,6 +49,16 @@ def check_character():
         "is_online": character_found,
         "message": message
     })
+
+@app.route('/test_connectivity', methods=['GET'])
+def test_connectivity():
+    url = 'https://www.tibia.com'
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return jsonify({"message": "Successfully connected to Tibia website"})
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Failed to connect to Tibia website: {e}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
